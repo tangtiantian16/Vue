@@ -1,59 +1,294 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-router" target="_blank" rel="noopener">router</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+  <div class="magnify">
+  <!-- 左边产品图片区域 -->
+    <div class="left_contaner">
+      <div class="middle_img" @mouseover="boxMouseOver" @mouseleave="boxMouseLeave">
+      <!-- 产品图片 -->
+        <img :src="middleImg" alt="">
+        <!-- 阴影盒子 -->
+        <div class="shade" @mouseover="shadeMouseOver" @mousemove="shadeMouseMove" ref="shade" v-show="isShade"></div>
+      </div>
+      <!-- 缩略图容器 -->
+      <div class="carousel">
+      <!-- 左箭头 -->
+        <div class="left_arrow arrow" @click="leftArrowClick"></div>
+        <!-- 缩略图展示盒子 -->
+        <div class="show_box">
+          <ul class="picture_container" ref="middlePicture">
+            <li class="picture_item" @mouseover="tabPicture(item)" v-for="(item, index) in pictureList" :key="index">
+              <img :src="item.url" class="small_img" alt="">
+            </li>
+          </ul>
+        </div>
+        <!-- 向右箭头 -->
+        <div class="right_arrow arrow" @click="rightArrowClick"></div>
+      </div>
+    </div>
+    <!-- 右边放大区域 -->
+    <div class="right_contanier" v-show="isBig">
+      <img :src="middleImg" ref="bigImg" class="big_img" alt="">
+    </div>
   </div>
 </template>
 
 <script>
+import $ from 'jquery'
 export default {
-  name: 'HelloWorld',
   props: {
-    msg: String
+    middleImgWidth: {
+      default: 350,
+      type: Number
+    }, // 产品图片宽
+    middleImgHeight: {
+      default: 400,
+      type: Number
+    }, // 产品图片高
+    thumbnailHeight: {
+      default: 100,
+      type: Number
+    }, // 缩略图容器高度
+    imgList: Array, // 图片数据
+    zoom: {
+      default: 2, // 缩略比例,放大比例
+      type: Number
+    }
+  },
+  data () {
+    return {
+      pictureList: [
+        { url: 'http://mp.ofweek.com/Upload/News/Img/member645/201711/17170046839337.jpg' },
+        { url: 'http://image.buy.ccb.com/merchant/201703/904919627/1522929521661_4.jpg' },
+        { url: 'http://image5.suning.cn/uimg/b2c/newcatentries/0070130691-000000000826244625_5_800x800.jpg' },
+        { url: 'http://img12.360buyimg.com/n5/s450x450_jfs/t9952/98/2269407420/279171/6137fe2f/59f28b2bN6959e086.jpg' },
+        { url: 'http://d.ifengimg.com/w600/p0.ifengimg.com/pmop/2017/1213/A4037864F6728F006B67AAEC51EC8A485F320FD2_size93_w1024_h734.jpeg' },
+        { url: 'http://d.ifengimg.com/w600/p0.ifengimg.com/pmop/2017/1213/A4037864F6728F006B67AAEC51EC8A485F320FD2_size93_w1024_h734.jpeg' }
+      ],
+      middleImg: '',
+      bigImg: '',
+      isShade: false,
+      isBig: false,
+      initX: 0,
+      initY: 0,
+      leftX: 0,
+      topY: 0,
+      middleLeft: 0,
+      itemWidth: 80
+    }
+  },
+  created () {
+    if (this.imgList && this.imgList.length) {
+      this.pictureList = this.imgList
+    }
+    this.middleImg = this.pictureList[0].url
+    // 计算缩略图的宽度,默认是显示4张图片,两边箭头的宽度和为50
+    this.itemWidth = (this.middleImgWidth - 50) / 4
+  },
+  mounted () {
+    this.$nextTick(() => {
+      // 容器的高
+      const imgWidth = this.middleImgHeight + this.thumbnailHeight + 20
+      // 设置容器宽高
+      $('.magnify').css({
+        width: this.middleImgWidth,
+        height: imgWidth
+      })
+      // 设置产品图宽高
+      $('.middle_img').css({
+        width: this.middleImgWidth,
+        height: this.middleImgHeight
+      })
+      // 设置移动阴影图宽高
+      $('.middle_img .shade').css({
+        width: this.middleImgWidth / this.zoom,
+        height: this.middleImgHeight / this.zoom
+      })
+      // 设置缩略图容器高
+      $('.carousel').css({
+        height: this.thumbnailHeight
+      })
+      // 设置每个缩略图宽
+      $('.picture_item').css({
+        width: this.itemWidth
+      })
+      // 设置放大后图片容器的宽高,left
+      $('.right_contanier').css({
+        left: this.middleImgWidth,
+        width: imgWidth,
+        height: imgWidth
+      })
+      // 设置放大图片的宽高(图片的放大倍数)
+      $('.right_contanier .big_img').css({
+        width: imgWidth * this.zoom,
+        height: imgWidth * this.zoom
+      })
+    })
+  },
+  methods: {
+    // 产品图片鼠标移入事件,显示阴影,显示大图
+    getPageScroll () {
+      return {
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0,
+        scrollLeft: window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0
+      }
+    },
+    getEventPage (e) {
+      return {
+        pageX: e.clientX + this.getPageScroll().scrollLeft,
+        pageY: e.clientY + this.getPageScroll().scrollTop
+      }
+    },
+    boxMouseOver (e) {
+      console.log(9999, e)
+      e.preventDefault()
+      e.stopPropagation()
+      this.isShade = true
+      this.isBig = true
+      // 计算阴影的位置
+      let x = e.offsetX - $('.shade').width() / 2
+      let y = e.offsetY - $('.shade').height() / 2
+      const maxLeft = $('.middle_img').width() - $('.shade').width()
+      const maxTop = $('.middle_img').height() - $('.shade').height()
+      x = x <= 0 ? 0 : x
+      x = x >= maxLeft ? maxLeft : x
+      y = y <= 0 ? 0 : y
+      y = y >= maxTop ? maxTop : y
+      $('.shade').css({
+        left: x,
+        top: y
+      })
+    },
+    shadeMouseMove (e) {
+      e.preventDefault()
+      e.stopPropagation()
+      var x = this.getEventPage(e).pageX - $('.middle_img')[0].offsetParent.offsetLeft - $('.middle_img')[0].offsetParent.clientLeft
+      var y = this.getEventPage(e).pageY - $('.middle_img')[0].offsetParent.offsetTop - $('.middle_img')[0].offsetParent.clientTop
+      x -= $('.shade').width() / 2
+      y -= $('.shade').height() / 2
+      const maxLeft = $('.middle_img').width() - $('.shade').width()
+      const maxTop = $('.middle_img').height() - $('.shade').height()
+      x = x <= 0 ? 0 : x
+      x = x >= maxLeft ? maxLeft : x
+      y = y <= 0 ? 0 : y
+      y = y >= maxTop ? maxTop : y
+      $('.shade').css({
+        left: x,
+        top: y
+      })
+      const xRate = $('.big_img').width() / $('.middle_img').width()
+      const yRate = $('.big_img').height() / $('.middle_img').height()
+      $('.big_img').css({
+        left: -x * xRate,
+        top: -y * yRate
+      })
+    },
+    shadeMouseOver (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    },
+    boxMouseLeave (e) {
+      this.isShade = false
+      this.isBig = false
+    },
+    tabPicture (item) {
+      this.middleImg = item.url
+    },
+    leftArrowClick () {
+      if (this.middleLeft < 0) {
+        this.middleLeft += this.itemWidth
+        $('.picture_container').animate({
+          left: this.middleLeft
+        }, 500)
+      }
+    },
+    rightArrowClick () {
+      if (this.middleLeft > -this.itemWidth * (this.pictureList.length - 4)) {
+        this.middleLeft -= this.itemWidth
+        $('.picture_container').animate({
+          left: this.middleLeft
+        }, 500)
+      }
+      console.log(this.middleLeft)
+    }
   }
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
+<style lang="less">
+.magnify {
+  position: relative;
+  .left_contaner {
+    width: 100%;
+    height: 100%;
+  }
+  .left_contaner .middle_img {
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    position: relative;
+  }
+  .left_contaner .shade {
+    background-color: rgba(    135,206,235, .5);
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: move;
+    }
+  .left_contaner .middle_img img {
+    width: 100%;
+    height: 100%;
+  }
+  .left_contaner .carousel {
+    width: 100%;
+    margin-top: 20px;
+    display: -webkit-flex;
+  }
+  .left_contaner .carousel .show_box {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .left_contaner .carousel .arrow {
+    flex-basis: 25px;
+    cursor: pointer;
+  }
+  .left_contaner .carousel .left_arrow {
+    background: url('http://www.jq22.com/demo/jQuery-fdj201705051102/images/btn_prev.png') no-repeat;
+    background-position: center center;
+  }
+  .left_contaner .carousel .right_arrow {
+    background: url('http://www.jq22.com/demo/jQuery-fdj201705051102/images/btn_next.png') no-repeat;
+    background-position: center right;
+  }
+  .left_contaner .carousel .picture_container {
+    width: 200%;
+    height: 100%;
+    position: absolute;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+  }
+  .left_contaner .picture_container .picture_item {
+    height: 100%;
+    float: left;
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  .left_contaner .picture_container .picture_item:hover {
+    border: 2px solid #f2019f;
+  }
+  .left_contaner .picture_container .picture_item img {
+    width: 100%;
+    height: 100%;
+  }
+  .right_contanier {
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    border: 1px solid #ccc;
+  }
+  .right_contanier .big_img {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+  }
 }
 </style>
